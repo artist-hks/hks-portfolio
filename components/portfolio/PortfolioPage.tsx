@@ -2,6 +2,7 @@
 
 import type { FormEvent, ReactNode } from "react";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   codolioStats,
@@ -332,10 +333,12 @@ function HeroSection() {
         className="absolute inset-y-0 right-0 w-full md:w-[62%] z-0 pointer-events-none"
         aria-hidden="true"
       >
-        <img
+        <Image
           src="/profile.png"
           alt=""
-          className="h-full w-full object-cover grayscale"
+          fill
+          priority
+          className="h-full w-full object-cover"
           style={{
             opacity: 0.75,
             objectPosition: "70% 18%",
