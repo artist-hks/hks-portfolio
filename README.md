@@ -17,7 +17,7 @@
 
 ## 🌐 Live Demo
 
-> **[https://hks-studio.vercel.app/](https://hks-studio.vercel.app/)**
+> **[https://hks-studio.vercel.app/](https://artist-hks.vercel.app/)**
 
 ---
 
