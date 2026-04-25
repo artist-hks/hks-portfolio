@@ -205,7 +205,7 @@ All PRs are reviewed and appreciated.
 
 | Platform | Link |
 |---|---|
-| 🌐 **Portfolio** | [hks-studio.vercel.app](https://hks-studio.vercel.app/) |
+| 🌐 **Portfolio** | [artist-hks.vercel.app](https://artist-hks.vercel.app/) |
 | 💻 **GitHub** | [@artist-hks](https://github.com/artist-hks) |
 | 💼 **LinkedIn** | [linkedin.com/in/artisthks](https://linkedin.com/in/artisthks) |
 | 📧 **Email** | artist.hks.dev@gmail.com |
