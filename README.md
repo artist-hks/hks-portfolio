@@ -34,7 +34,7 @@
 <!-- Insert contact section screenshot here -->
 ![Contact Section](./public/screenshots/contact.png)
 
-> *To add screenshots: take a full-page capture and place images in `/public/screenshots/`*
+
 
 </div>
 
