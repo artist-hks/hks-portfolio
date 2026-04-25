@@ -4,7 +4,7 @@
 
 ### *Building digital experiences and intelligent systems.*
 
-[![Live](https://img.shields.io/badge/Live%20Demo-hks--studio.vercel.app-facc15?style=for-the-badge&logo=vercel&logoColor=black&labelColor=0a0a0a)](https://artist-hks.vercel.app/)
+[![Live](https://img.shields.io/badge/Live%20Demo-artist--hks.vercel.app-facc15?style=for-the-badge&logo=vercel&logoColor=black&labelColor=0a0a0a)](https://artist-hks.vercel.app/)
 [![Next.js](https://img.shields.io/badge/Next.js-15-white?style=for-the-badge&logo=nextdotjs&logoColor=white&labelColor=0a0a0a)](https://nextjs.org/)
 [![Tailwind](https://img.shields.io/badge/Tailwind_CSS-v4-38bdf8?style=for-the-badge&logo=tailwindcss&logoColor=38bdf8&labelColor=0a0a0a)](https://tailwindcss.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=for-the-badge&logo=typescript&logoColor=3178c6&labelColor=0a0a0a)](https://www.typescriptlang.org/)
@@ -17,7 +17,7 @@
 
 ## 🌐 Live Demo
 
-> **[https://hks-studio.vercel.app/](https://artist-hks.vercel.app/)**
+> **[https://artist-hks.vercel.app/](https://artist-hks.vercel.app/)**
 
 ---
 
