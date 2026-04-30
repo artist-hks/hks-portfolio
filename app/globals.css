@@ -44,17 +44,31 @@ button {
   color: #fff;
 }
 
+/* ── Scrollbar ─────────────────────────────────────────── */
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #facc15 transparent;
+}
+
+/* Chrome / Edge / Safari */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: linear-gradient(180deg, #facc15, #ff7a00);
+  background: #d97706;
+  transition: background 200ms ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #facc15;
 }
 
 @media (pointer: coarse) {
