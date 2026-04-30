@@ -254,22 +254,29 @@ function Navigation({
   onToggleMenu: () => void;
   onCloseMenu: () => void;
 }) {
+  // Prevent double-fire from onTouchEnd + onClick both triggering on mobile
+  const isNavigating = useRef(false);
+
   function navigateTo(sectionId: string) {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
+
+    const NAV_HEIGHT = 64;
     const el = document.getElementById(sectionId);
-    if (el) el.scrollIntoView({ behavior: "smooth" });
-    setTimeout(onCloseMenu, 300);
+    if (el) {
+      const top = el.getBoundingClientRect().top + window.scrollY - NAV_HEIGHT;
+      window.scrollTo({ top, behavior: "smooth" });
+    }
+
+    // Close menu after scroll starts, reset lock after animation settles
+    setTimeout(() => {
+      onCloseMenu();
+      setTimeout(() => { isNavigating.current = false; }, 200);
+    }, 300);
   }
 
   function handleMobileNavClick(
     e: React.MouseEvent<HTMLAnchorElement>,
-    sectionId: string
-  ) {
-    e.preventDefault();
-    navigateTo(sectionId);
-  }
-
-  function handleMobileNavTouch(
-    e: React.TouchEvent<HTMLAnchorElement>,
     sectionId: string
   ) {
     e.preventDefault();
@@ -351,7 +358,6 @@ function Navigation({
                     }`}
                     style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                     onClick={(e) => handleMobileNavClick(e, sectionId)}
-                    onTouchEnd={(e) => handleMobileNavTouch(e, sectionId)}
                   >
                     {item}
                   </a>
