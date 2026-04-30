@@ -254,25 +254,14 @@ function Navigation({
   onToggleMenu: () => void;
   onCloseMenu: () => void;
 }) {
-  // Prevent double-fire from onTouchEnd + onClick both triggering on mobile
-  const isNavigating = useRef(false);
+  function scrollToSection(id: string) {
+    const element = document.getElementById(id);
+    if (!element) return;
 
-  function navigateTo(sectionId: string) {
-    if (isNavigating.current) return;
-    isNavigating.current = true;
+    const offset = 70;
+    const top = element.getBoundingClientRect().top + window.pageYOffset - offset;
 
-    const NAV_HEIGHT = 64;
-    const el = document.getElementById(sectionId);
-    if (el) {
-      const top = el.getBoundingClientRect().top + window.scrollY - NAV_HEIGHT;
-      window.scrollTo({ top, behavior: "smooth" });
-    }
-
-    // Close menu after scroll starts, reset lock after animation settles
-    setTimeout(() => {
-      onCloseMenu();
-      setTimeout(() => { isNavigating.current = false; }, 200);
-    }, 300);
+    window.scrollTo({ top, behavior: "smooth" });
   }
 
   function handleMobileNavClick(
@@ -280,7 +269,8 @@ function Navigation({
     sectionId: string
   ) {
     e.preventDefault();
-    navigateTo(sectionId);
+    scrollToSection(sectionId); // scroll first
+    onCloseMenu();              // then close menu
   }
 
   return (
