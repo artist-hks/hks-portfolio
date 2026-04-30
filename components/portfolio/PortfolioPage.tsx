@@ -149,7 +149,9 @@ export default function PortfolioPage() {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-[#0a0a0a] text-white"
+      style={{ overflowX: "clip" }}
+    >
       <ParticleBackground />
 
       <AnimatePresence>{isLoading ? <LoadingScreen /> : null}</AnimatePresence>
@@ -257,10 +259,8 @@ function Navigation({
   function scrollToSection(id: string) {
     const element = document.getElementById(id);
     if (!element) return;
-
     const offset = 70;
-    const top = element.getBoundingClientRect().top + window.pageYOffset - offset;
-
+    const top = element.getBoundingClientRect().top + window.scrollY - offset;
     window.scrollTo({ top, behavior: "smooth" });
   }
 
@@ -269,8 +269,11 @@ function Navigation({
     sectionId: string
   ) {
     e.preventDefault();
-    scrollToSection(sectionId); // scroll first
-    onCloseMenu();              // then close menu
+    // Close drawer FIRST, then wait for its exit animation (250ms)
+    // to finish before reading getBoundingClientRect — otherwise the
+    // drawer's height inflates the offset and lands on the wrong section.
+    onCloseMenu();
+    window.setTimeout(() => scrollToSection(sectionId), 280);
   }
 
   return (
@@ -343,9 +346,8 @@ function Navigation({
                   <a
                     key={item}
                     href={`#${sectionId}`}
-                    className={`block border-b border-zinc-800 py-3 font-mono text-xs uppercase tracking-[0.2em] transition-colors last:border-b-0 ${
-                      isActive ? "text-yellow-400" : "text-zinc-400"
-                    }`}
+                    className={`block border-b border-zinc-800 py-3 font-mono text-xs uppercase tracking-[0.2em] transition-colors last:border-b-0 ${isActive ? "text-yellow-400" : "text-zinc-400"
+                      }`}
                     style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                     onClick={(e) => handleMobileNavClick(e, sectionId)}
                   >
@@ -368,7 +370,8 @@ function HeroSection({ isLoading }: { isLoading: boolean }) {
   return (
     <section
       id="home"
-      className="relative flex min-h-screen items-center overflow-hidden pt-24"
+      className="relative flex min-h-screen items-center pt-24"
+      style={{ overflow: "clip" }}
     >
       {/* Grid overlay */}
       <div
