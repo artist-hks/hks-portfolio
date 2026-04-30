@@ -253,6 +253,17 @@ function Navigation({
   onToggleMenu: () => void;
   onCloseMenu: () => void;
 }) {
+  function handleMobileNavClick(
+    e: React.MouseEvent<HTMLAnchorElement>,
+    sectionId: string
+  ) {
+    e.preventDefault();
+    const el = document.getElementById(sectionId);
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+    // close menu after scroll has begun
+    setTimeout(onCloseMenu, 300);
+  }
+
   return (
     <motion.nav
       initial={{ y: -80 }}
@@ -270,7 +281,7 @@ function Navigation({
           </span>
         </a>
 
-        {/* Fix #2: Active section highlight in desktop nav */}
+        {/* Desktop nav */}
         <div className="hidden items-center gap-8 md:flex">
           {sections.map((item) => {
             const isActive = activeSection === item.toLowerCase();
@@ -316,21 +327,20 @@ function Navigation({
             className="overflow-hidden border-t border-zinc-800 bg-[#111] md:hidden"
           >
             <div className="flex flex-col px-6 py-4">
-              {sections.map((item, index) => {
-                const isActive = activeSection === item.toLowerCase();
+              {sections.map((item) => {
+                const sectionId = item.toLowerCase();
+                const isActive = activeSection === sectionId;
                 return (
-                  <motion.a
+                  <a
                     key={item}
-                    href={`#${item.toLowerCase()}`}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.04 }}
-                    className={`border-b border-zinc-800 py-3 font-mono text-xs uppercase tracking-[0.2em] transition-colors last:border-b-0 ${isActive ? "text-yellow-400" : "text-zinc-400 hover:text-yellow-400"
-                      }`}
-                    onClick={() => setTimeout(onCloseMenu, 0)}
+                    href={`#${sectionId}`}
+                    className={`border-b border-zinc-800 py-3 font-mono text-xs uppercase tracking-[0.2em] transition-colors last:border-b-0 ${
+                      isActive ? "text-yellow-400" : "text-zinc-400 hover:text-yellow-400"
+                    }`}
+                    onClick={(e) => handleMobileNavClick(e, sectionId)}
                   >
                     {item}
-                  </motion.a>
+                  </a>
                 );
               })}
             </div>
