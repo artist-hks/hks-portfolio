@@ -327,7 +327,7 @@ function Navigation({
                     transition={{ delay: index * 0.04 }}
                     className={`border-b border-zinc-800 py-3 font-mono text-xs uppercase tracking-[0.2em] transition-colors last:border-b-0 ${isActive ? "text-yellow-400" : "text-zinc-400 hover:text-yellow-400"
                       }`}
-                    onClick={onCloseMenu}
+                    onClick={() => setTimeout(onCloseMenu, 0)}
                   >
                     {item}
                   </motion.a>
