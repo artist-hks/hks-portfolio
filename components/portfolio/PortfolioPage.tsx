@@ -200,9 +200,10 @@ function ParticleBackground() {
 function LoadingScreen() {
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0a0a]"
-      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a0a0a]"
+      exit={{ opacity: 0, pointerEvents: "none" }}
       transition={{ duration: 0.4 }}
+      style={{ pointerEvents: "auto" }}
     >
       <div className="text-center">
         <motion.div
@@ -253,15 +254,26 @@ function Navigation({
   onToggleMenu: () => void;
   onCloseMenu: () => void;
 }) {
+  function navigateTo(sectionId: string) {
+    const el = document.getElementById(sectionId);
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+    setTimeout(onCloseMenu, 300);
+  }
+
   function handleMobileNavClick(
     e: React.MouseEvent<HTMLAnchorElement>,
     sectionId: string
   ) {
     e.preventDefault();
-    const el = document.getElementById(sectionId);
-    if (el) el.scrollIntoView({ behavior: "smooth" });
-    // close menu after scroll has begun
-    setTimeout(onCloseMenu, 300);
+    navigateTo(sectionId);
+  }
+
+  function handleMobileNavTouch(
+    e: React.TouchEvent<HTMLAnchorElement>,
+    sectionId: string
+  ) {
+    e.preventDefault();
+    navigateTo(sectionId);
   }
 
   return (
@@ -269,7 +281,7 @@ function Navigation({
       initial={{ y: -80 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="fixed top-0 z-40 w-full border-b border-zinc-800 bg-[#0a0a0a]/90 backdrop-blur-sm"
+      className="fixed top-0 z-50 w-full border-b border-zinc-800 bg-[#0a0a0a]/90 backdrop-blur-sm"
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <a
@@ -334,10 +346,12 @@ function Navigation({
                   <a
                     key={item}
                     href={`#${sectionId}`}
-                    className={`border-b border-zinc-800 py-3 font-mono text-xs uppercase tracking-[0.2em] transition-colors last:border-b-0 ${
-                      isActive ? "text-yellow-400" : "text-zinc-400 hover:text-yellow-400"
+                    className={`block border-b border-zinc-800 py-3 font-mono text-xs uppercase tracking-[0.2em] transition-colors last:border-b-0 ${
+                      isActive ? "text-yellow-400" : "text-zinc-400"
                     }`}
+                    style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                     onClick={(e) => handleMobileNavClick(e, sectionId)}
+                    onTouchEnd={(e) => handleMobileNavTouch(e, sectionId)}
                   >
                     {item}
                   </a>
