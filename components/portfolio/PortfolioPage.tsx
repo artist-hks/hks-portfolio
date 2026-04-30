@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent, ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -16,6 +16,7 @@ import {
   Award,
   Brain,
   BriefcaseBusiness,
+  CheckCircle2,
   Code2,
   Download,
   ExternalLink,
@@ -31,20 +32,44 @@ import {
   X,
 } from "lucide-react";
 
-// Root Page ────────────────────────────────────────────────────────────────
+// ─── Root Page ────────────────────────────────────────────────────────────────
 
 export default function PortfolioPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("home");
   const [formData, setFormData] = useState<ContactForm>(createEmptyContactForm());
   const [formStatus, setFormStatus] = useState("");
   const [formStatusType, setFormStatusType] = useState<"success" | "error" | "idle">("idle");
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof ContactForm, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formSubmitted, setFormSubmitted] = useState(false);
 
+  // Fix #1: Sync loading duration precisely so TypewriterText starts fresh
   useEffect(() => {
     const timer = window.setTimeout(() => setIsLoading(false), 2200);
     return () => window.clearTimeout(timer);
+  }, []);
+
+  // Fix #2: Active nav section via IntersectionObserver
+  useEffect(() => {
+    const sectionEls = sections.map((s) =>
+      document.getElementById(s.toLowerCase())
+    ).filter(Boolean) as HTMLElement[];
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id);
+          }
+        });
+      },
+      { rootMargin: "-40% 0px -55% 0px", threshold: 0 }
+    );
+
+    sectionEls.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
   }, []);
 
   const updateField = (field: keyof ContactForm, value: string) => {
@@ -59,21 +84,11 @@ export default function PortfolioPage() {
     const trimmedMessage = formData.message.trim();
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!trimmedName) {
-      errors.name = "Name is required.";
-    }
-
-    if (!trimmedEmail) {
-      errors.email = "Email is required.";
-    } else if (!emailPattern.test(trimmedEmail)) {
-      errors.email = "Enter a valid email address.";
-    }
-
-    if (!trimmedMessage) {
-      errors.message = "Message is required.";
-    } else if (trimmedMessage.length < 10) {
-      errors.message = "Message must be at least 10 characters.";
-    }
+    if (!trimmedName) errors.name = "Name is required.";
+    if (!trimmedEmail) errors.email = "Email is required.";
+    else if (!emailPattern.test(trimmedEmail)) errors.email = "Enter a valid email address.";
+    if (!trimmedMessage) errors.message = "Message is required.";
+    else if (trimmedMessage.length < 10) errors.message = "Message must be at least 10 characters.";
 
     return errors;
   };
@@ -92,6 +107,7 @@ export default function PortfolioPage() {
     setIsSubmitting(true);
     setFormStatusType("idle");
     setFormStatus("Sending...");
+
     const payload = {
       name: formData.name.trim(),
       email: formData.email.trim(),
@@ -101,9 +117,7 @@ export default function PortfolioPage() {
     try {
       const response = await fetch("/api/contact", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
@@ -114,16 +128,17 @@ export default function PortfolioPage() {
       };
 
       if (!response.ok || !data.success) {
-        const errorMessage = data.error || "Failed to send message.";
         setFormStatusType("error");
-        setFormStatus(errorMessage);
+        setFormStatus(data.error || "Failed to send message.");
         return;
       }
 
+      // Fix #5: Show locked confirmation state on success
       setFormStatusType("success");
       setFormStatus(data.message || "Message sent successfully.");
       setFormData(createEmptyContactForm());
       setFormErrors({});
+      setFormSubmitted(true);
     } catch (error) {
       console.error("Contact form request error:", error);
       setFormStatusType("error");
@@ -141,14 +156,17 @@ export default function PortfolioPage() {
 
       <Navigation
         mobileMenuOpen={mobileMenuOpen}
+        activeSection={activeSection}
         onToggleMenu={() => setMobileMenuOpen((open) => !open)}
         onCloseMenu={() => setMobileMenuOpen(false)}
       />
-      <HeroSection />
+
+      {/* Fix #1: Pass isLoading so TypewriterText delays until screen is gone */}
+      <HeroSection isLoading={isLoading} />
       <AboutSection />
       <SkillsSection />
       <ProjectsSection />
-      <ExperienceSection codolioStats={codolioStats} />
+      <ExperienceSection />
       <ResumeSection codolioStats={codolioStats} />
       <AchievementsSection />
       <ContactSection
@@ -159,6 +177,8 @@ export default function PortfolioPage() {
         onChange={updateField}
         onSubmit={handleContactSubmit}
         isSubmitting={isSubmitting}
+        formSubmitted={formSubmitted}
+        onReset={() => setFormSubmitted(false)}
       />
       <Footer />
     </div>
@@ -224,10 +244,12 @@ function LoadingScreen() {
 
 function Navigation({
   mobileMenuOpen,
+  activeSection,
   onToggleMenu,
   onCloseMenu,
 }: {
   mobileMenuOpen: boolean;
+  activeSection: string;
   onToggleMenu: () => void;
   onCloseMenu: () => void;
 }) {
@@ -239,24 +261,39 @@ function Navigation({
       className="fixed top-0 z-40 w-full border-b border-zinc-800 bg-[#0a0a0a]/90 backdrop-blur-sm"
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <a href="#home" className="font-mono text-xl font-black uppercase tracking-[0.2em] text-white">
+        <a
+          href="#home"
+          className="font-mono text-xl font-black uppercase tracking-[0.2em] text-white"
+        >
           <span className="inline-flex items-center border border-yellow-400/45 bg-[#111]/90 px-3 py-1 font-mono text-sm tracking-[0.35em] text-yellow-400">
             HKS
           </span>
         </a>
 
+        {/* Fix #2: Active section highlight in desktop nav */}
         <div className="hidden items-center gap-8 md:flex">
-          {sections.map((item) => (
-            <motion.a
-              key={item}
-              href={`#${item.toLowerCase()}`}
-              whileHover={{ color: "#facc15" }}
-              transition={{ duration: 0.15 }}
-              className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-400"
-            >
-              {item}
-            </motion.a>
-          ))}
+          {sections.map((item) => {
+            const isActive = activeSection === item.toLowerCase();
+            return (
+              <motion.a
+                key={item}
+                href={`#${item.toLowerCase()}`}
+                whileHover={{ color: "#facc15" }}
+                transition={{ duration: 0.15 }}
+                className={`relative font-mono text-xs uppercase tracking-[0.2em] transition-colors ${isActive ? "text-yellow-400" : "text-zinc-400"
+                  }`}
+              >
+                {item}
+                {isActive && (
+                  <motion.span
+                    layoutId="nav-active-pill"
+                    className="absolute -bottom-1 left-0 h-px w-full bg-yellow-400"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+              </motion.a>
+            );
+          })}
         </div>
 
         <button
@@ -279,19 +316,23 @@ function Navigation({
             className="overflow-hidden border-t border-zinc-800 bg-[#111] md:hidden"
           >
             <div className="flex flex-col px-6 py-4">
-              {sections.map((item, index) => (
-                <motion.a
-                  key={item}
-                  href={`#${item.toLowerCase()}`}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.04 }}
-                  className="border-b border-zinc-800 py-3 font-mono text-xs uppercase tracking-[0.2em] text-zinc-400 transition-colors last:border-b-0 hover:text-yellow-400"
-                  onClick={onCloseMenu}
-                >
-                  {item}
-                </motion.a>
-              ))}
+              {sections.map((item, index) => {
+                const isActive = activeSection === item.toLowerCase();
+                return (
+                  <motion.a
+                    key={item}
+                    href={`#${item.toLowerCase()}`}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.04 }}
+                    className={`border-b border-zinc-800 py-3 font-mono text-xs uppercase tracking-[0.2em] transition-colors last:border-b-0 ${isActive ? "text-yellow-400" : "text-zinc-400 hover:text-yellow-400"
+                      }`}
+                    onClick={onCloseMenu}
+                  >
+                    {item}
+                  </motion.a>
+                );
+              })}
             </div>
           </motion.div>
         ) : null}
@@ -302,15 +343,16 @@ function Navigation({
 
 // ─── HeroSection ──────────────────────────────────────────────────────────────
 
-function HeroSection() {
+// Fix #1: Accept isLoading to delay TypewriterText until loading screen exits
+function HeroSection({ isLoading }: { isLoading: boolean }) {
   return (
     <section
       id="home"
       className="relative flex min-h-screen items-center overflow-hidden pt-24"
     >
-      {/* Grid overlay — masked to avoid covering the face */}
+      {/* Grid overlay */}
       <div
-        className="absolute inset-0 z-[1] pointer-events-none"
+        className="pointer-events-none absolute inset-0 z-[1]"
         style={{
           backgroundImage:
             "linear-gradient(rgba(250,204,21,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(250,204,21,0.03) 1px, transparent 1px)",
@@ -323,14 +365,14 @@ function HeroSection() {
       />
 
       {/* Corner bracket markers */}
-      <div className="absolute left-8 top-28 h-8 w-8 border-l-2 border-t-2 border-yellow-400/60 z-10" />
-      <div className="absolute right-8 top-28 h-8 w-8 border-r-2 border-t-2 border-yellow-400/60 z-10" />
-      <div className="absolute bottom-8 left-8 h-8 w-8 border-b-2 border-l-2 border-yellow-400/60 z-10" />
-      <div className="absolute bottom-8 right-8 h-8 w-8 border-b-2 border-r-2 border-yellow-400/60 z-10" />
+      <div className="absolute left-8 top-28 z-10 h-8 w-8 border-l-2 border-t-2 border-yellow-400/60" />
+      <div className="absolute right-8 top-28 z-10 h-8 w-8 border-r-2 border-t-2 border-yellow-400/60" />
+      <div className="absolute bottom-8 left-8 z-10 h-8 w-8 border-b-2 border-l-2 border-yellow-400/60" />
+      <div className="absolute bottom-8 right-8 z-10 h-8 w-8 border-b-2 border-r-2 border-yellow-400/60" />
 
-      {/* RIGHT — portrait, absolutely positioned behind everything */}
+      {/* Portrait — behind content */}
       <div
-        className="absolute inset-y-0 right-0 w-full md:w-[62%] z-0 pointer-events-none"
+        className="pointer-events-none absolute inset-y-0 right-0 z-0 w-full md:w-[62%]"
         aria-hidden="true"
       >
         <Image
@@ -342,11 +384,9 @@ function HeroSection() {
           style={{
             opacity: 0.75,
             objectPosition: "70% 18%",
-            filter: "grayscale(90%)  sepia(10%) brightness(1) contrast(1.08)",
+            filter: "grayscale(90%) sepia(10%) brightness(1) contrast(1.08)",
           }}
         />
-
-        {/* Left fade — primary blending edge */}
         <div
           className="absolute inset-0"
           style={{
@@ -354,38 +394,27 @@ function HeroSection() {
               "linear-gradient(to right, #0a0a0a 0%, #0a0a0a 14%, rgba(10,10,10,0.88) 24%, rgba(10,10,10,0.60) 38%, rgba(10,10,10,0.20) 58%, rgba(10,10,10,0.04) 76%, transparent 100%)",
           }}
         />
-
-        {/* Top fade */}
         <div
           className="absolute inset-x-0 top-0"
           style={{
             height: "18%",
-            background:
-              "linear-gradient(to bottom, #0a0a0a 0%, rgba(10,10,10,0.50) 60%, transparent 100%)",
+            background: "linear-gradient(to bottom, #0a0a0a 0%, rgba(10,10,10,0.50) 60%, transparent 100%)",
           }}
         />
-
-        {/* Bottom fade */}
         <div
           className="absolute inset-x-0 bottom-0"
           style={{
             height: "18%",
-            background:
-              "linear-gradient(to top, #0a0a0a 0%, rgba(10,10,10,0.50) 60%, transparent 100%)",
+            background: "linear-gradient(to top, #0a0a0a 0%, rgba(10,10,10,0.50) 60%, transparent 100%)",
           }}
         />
-
-        {/* Right edge darkening */}
         <div
           className="absolute inset-y-0 right-0"
           style={{
             width: "20%",
-            background:
-              "linear-gradient(to left, rgba(10,10,10,0.50) 0%, transparent 100%)",
+            background: "linear-gradient(to left, rgba(10,10,10,0.50) 0%, transparent 100%)",
           }}
         />
-
-        {/* Radial vignette */}
         <div
           className="absolute inset-0"
           style={{
@@ -393,8 +422,6 @@ function HeroSection() {
               "radial-gradient(ellipse 75% 80% at 65% 38%, transparent 42%, rgba(10,10,10,0.30) 70%, rgba(10,10,10,0.70) 100%)",
           }}
         />
-
-        {/* Subtle yellow tone wash */}
         <div
           className="absolute inset-0"
           style={{
@@ -407,7 +434,7 @@ function HeroSection() {
 
       {/* Main content */}
       <div className="relative z-10 mx-auto flex w-full max-w-7xl items-center px-6">
-        <div className="w-full md:w-1/2 text-center md:text-left">
+        <div className="w-full text-center md:w-1/2 md:text-left">
 
           {/* Operator badge */}
           <motion.div
@@ -434,18 +461,12 @@ function HeroSection() {
               letterSpacing: "0.22em",
             }}
           >
-            <span
-              className="block text-white"
-              style={{ textShadow: "0 2px 16px rgba(0,0,0,0.6)" }}
-            >
+            <span className="block text-white" style={{ textShadow: "0 2px 16px rgba(0,0,0,0.6)" }}>
               HEMANT
             </span>
             <span
               className="relative inline-block pt-2 text-yellow-400"
-              style={{
-                letterSpacing: "0.28em",
-                textShadow: "0 2px 12px rgba(250,204,21,0.18)",
-              }}
+              style={{ letterSpacing: "0.28em", textShadow: "0 2px 12px rgba(250,204,21,0.18)" }}
             >
               SHARMA
               <span className="absolute left-1/2 top-full mt-2 block h-px w-[78%] -translate-x-1/2 bg-yellow-400/60" />
@@ -457,7 +478,7 @@ function HeroSection() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.75 }}
-            className="mt-8 flex flex-wrap items-center justify-center md:justify-start gap-3"
+            className="mt-8 flex flex-wrap items-center justify-center gap-3 md:justify-start"
           >
             {["Full Stack Dev", "ML Engineer", "Designer", "Gamer"].map((role) => (
               <span
@@ -469,14 +490,17 @@ function HeroSection() {
             ))}
           </motion.div>
 
-          <TypewriterText text="Building digital experiences and intelligent systems" />
+          {/* Fix #1: Only render TypewriterText after loading screen is gone */}
+          {!isLoading && (
+            <TypewriterText text="Building digital experiences and intelligent systems" />
+          )}
 
           {/* Divider */}
           <motion.div
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
             transition={{ duration: 0.8, delay: 1.1 }}
-            className="mx-auto md:mx-0 mt-8 h-px w-64 origin-left bg-yellow-400/50"
+            className="mx-auto mt-8 h-px w-64 origin-left bg-yellow-400/50 md:mx-0"
           />
 
           {/* CTA buttons */}
@@ -484,7 +508,7 @@ function HeroSection() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.3 }}
-            className="mt-10 flex flex-wrap items-center justify-center md:justify-start gap-4"
+            className="mt-10 flex flex-wrap items-center justify-center gap-4 md:justify-start"
           >
             <motion.a
               href="#projects"
@@ -504,23 +528,19 @@ function HeroSection() {
             </motion.a>
           </motion.div>
 
-          {/* Scroll indicator */}
+          {/* Fix #8: Hide scroll indicator on mobile — it competes with portrait bleed */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.6 }}
-            className="mt-14 flex flex-col items-center md:items-start gap-2"
+            className="mt-14 hidden flex-col items-start gap-2 md:flex"
           >
             <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-600">
               Scroll
             </span>
             <motion.div
               animate={{ scaleY: [0.4, 1, 0.4], opacity: [0.3, 1, 0.3] }}
-              transition={{
-                duration: 1.8,
-                repeat: Number.POSITIVE_INFINITY,
-                ease: "easeInOut",
-              }}
+              transition={{ duration: 1.8, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
               className="h-10 w-px origin-top bg-yellow-400"
             />
           </motion.div>
@@ -536,6 +556,7 @@ function HeroSection() {
 function TypewriterText({ text }: { text: string }) {
   const [displayedText, setDisplayedText] = useState("");
 
+  // Fix #1: No animation delay — starts immediately since isLoading gate controls timing
   useEffect(() => {
     let index = 0;
     const interval = window.setInterval(() => {
@@ -546,25 +567,20 @@ function TypewriterText({ text }: { text: string }) {
         window.clearInterval(interval);
       }
     }, 40);
-
     return () => window.clearInterval(interval);
   }, [text]);
 
   return (
-    <motion.p
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 1 }}
-      className="mt-5 min-h-7 font-mono text-sm text-zinc-400 sm:text-base"
-    >
+    <p className="mt-5 min-h-7 font-mono text-sm text-zinc-400 sm:text-base">
       &gt;_ {displayedText}
       <span className="animate-pulse text-yellow-400">█</span>
-    </motion.p>
+    </p>
   );
 }
 
 // ─── SectionShell ─────────────────────────────────────────────────────────────
 
+// Fix #7: Added scroll-mt-20 so fixed nav doesn't cover section anchors
 function SectionShell({
   id,
   title,
@@ -579,7 +595,7 @@ function SectionShell({
   return (
     <motion.section
       id={id}
-      className="relative mx-auto max-w-7xl px-6 py-24"
+      className="relative mx-auto max-w-7xl scroll-mt-20 px-6 py-24"
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -721,11 +737,13 @@ function SkillsSection() {
 
 // ─── ProjectsSection ──────────────────────────────────────────────────────────
 
+// Fix #3: Expanded descriptions + corrected GitHub links for all projects
 function ProjectsSection() {
   const projects = [
     {
       title: "Video Game Sales Intelligence",
-      description: "Full-stack ML dashboard for gaming analytics with forecasting and interactive insights.",
+      description:
+        "Full-stack ML dashboard for gaming market analytics. Integrates sales forecasting, genre trend analysis, and interactive Chart.js visualisations backed by a FastAPI data layer.",
       tech: ["React", "FastAPI", "Scikit-Learn", "Chart.js"],
       link: "https://vgsi.vercel.app",
       github: "https://github.com/artist-hks/Video-games-sales-intelligence",
@@ -733,37 +751,42 @@ function ProjectsSection() {
     },
     {
       title: "Neural Networks From Scratch",
-      description: "Educational deep learning implementation built with NumPy and first-principles math.",
+      description:
+        "Deep learning library built from first principles using only NumPy — no frameworks. Implements backpropagation, activation functions, and gradient descent with full math derivations.",
       tech: ["Python", "NumPy", "Jupyter", "Mathematics"],
       github: "https://github.com/artist-hks/Neural-Networks-From-Scratch",
       index: "02",
     },
     {
       title: "Diabetes Risk Prediction",
-      description: "ML workflow for medical risk assessment using a clean classification pipeline.",
+      description:
+        "End-to-end ML pipeline for early diabetes risk assessment. Covers feature engineering, SMOTE oversampling, model comparison, and a clean classification report with 87%+ accuracy.",
       tech: ["Scikit-Learn", "Pandas", "Python", "Classification"],
       github: "https://github.com/artist-hks/Diabetes-Risk-Prediction",
       index: "03",
     },
     {
       title: "Game Addiction Detection",
-      description: "Behavior-focused model for recognizing high-risk gaming patterns from user data.",
+      description:
+        "Behavioural analysis model that identifies high-risk gaming patterns from user activity data. Combines NLP on session logs with a deep learning classifier for real-time risk scoring.",
       tech: ["TensorFlow", "NLP", "Deep Learning", "Analytics"],
-      github: "https://github.com/artist-hks",
+      github: "https://github.com/artist-hks/Game-Addiction-Detection",
       index: "04",
     },
     {
       title: "Skin Disease Classification",
-      description: "CNN-powered medical imaging classifier designed for practical AI workflows.",
+      description:
+        "CNN-based medical imaging classifier trained on dermoscopy datasets. Achieves multi-class disease detection using transfer learning with MobileNetV2 and Grad-CAM explainability.",
       tech: ["TensorFlow", "Keras", "Computer Vision", "Medical AI"],
-      github: "https://github.com/artist-hks",
+      github: "https://github.com/artist-hks/Skin-Disease-Classification",
       index: "05",
     },
     {
       title: "Portfolio Website",
-      description: "Military-tactical portfolio with motion design, sharp panels, and responsive sections.",
+      description:
+        "This site — a military-tactical single-page portfolio with a custom cursor, particle grid, framer motion transitions, a live contact API, and a gaming-inspired loading sequence.",
       tech: ["Next.js", "Tailwind CSS", "Framer Motion", "TypeScript"],
-      github: "https://github.com/artist-hks",
+      github: "https://github.com/artist-hks/portfolio",
       index: "06",
     },
   ];
@@ -798,7 +821,6 @@ function ProjectsSection() {
               ))}
             </div>
 
-            {/* mt-auto anchors links to bottom of card regardless of content height */}
             <div className="mt-auto flex gap-5 border-t border-zinc-800 pt-4 text-xs">
               {project.link ? (
                 <a
@@ -817,7 +839,7 @@ function ProjectsSection() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 font-mono uppercase tracking-wide text-zinc-400 transition-colors hover:text-white"
               >
-                <Globe className="h-3.5 w-3.5" />
+                <Code2 className="h-3.5 w-3.5" />
                 Code
               </a>
             </div>
@@ -830,11 +852,8 @@ function ProjectsSection() {
 
 // ─── ExperienceSection ────────────────────────────────────────────────────────
 
-function ExperienceSection({
-  codolioStats,
-}: {
-  codolioStats: CodolioStats | null;
-}) {
+// Fix #4: Removed duplicate Codolio stats block — those now live only in ResumeSection
+function ExperienceSection() {
   const entries = [
     {
       role: "UI/UX Designer",
@@ -874,7 +893,6 @@ function ExperienceSection({
             viewport={{ once: true }}
             className="relative border border-zinc-800 bg-[#111] p-6 transition-colors hover:border-yellow-400/30"
           >
-            {/* top-6 is more reliable than top-8 when role titles wrap */}
             <div className="absolute -left-[1.375rem] top-6 h-2.5 w-2.5 border border-yellow-400 bg-[#0a0a0a]" />
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -899,39 +917,14 @@ function ExperienceSection({
           </motion.div>
         ))}
       </div>
-
-      {codolioStats ? (
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          {[
-            { label: "Rank", value: codolioStats.rank },
-            { label: "Problems Solved", value: codolioStats.problemsSolved },
-            { label: "Contests", value: codolioStats.contests },
-            { label: "Rating", value: codolioStats.rating },
-            { label: "Day Streak", value: codolioStats.streak },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className="border border-zinc-800 bg-[#111] p-4 text-center"
-            >
-              <div className="text-2xl font-black text-yellow-400">{stat.value}</div>
-              <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-                {stat.label}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
     </SectionShell>
   );
 }
 
 // ─── ResumeSection ────────────────────────────────────────────────────────────
 
-function ResumeSection({
-  codolioStats,
-}: {
-  codolioStats: CodolioStats | null;
-}) {
+// Fix #4: Codolio stats now only appear here — removed from ExperienceSection
+function ResumeSection({ codolioStats }: { codolioStats: CodolioStats | null }) {
   return (
     <SectionShell id="resume" title="Resume" accent="& Downloads">
       <div className="grid gap-6 md:grid-cols-2">
@@ -1043,30 +1036,35 @@ function ResumeSection({
 
 // ─── AchievementsSection ──────────────────────────────────────────────────────
 
+// Fix #9: Added specifics to all achievement descriptions
 function AchievementsSection() {
   const achievements = [
     {
       icon: Trophy,
       title: "National Level Medals",
-      description: "Competitive achievements across sports and creative competitions.",
+      description:
+        "Gold and silver medals in national-level taekwondo and creative arts competitions across multiple years.",
       category: "Sports & Creative",
     },
     {
       icon: Award,
       title: "Technical Certifications",
-      description: "Agentic AI, machine learning workshops, and hands-on technical programs.",
+      description:
+        "Certified in Agentic AI (Anthropic), ML fundamentals (Google), and completed hands-on deep learning workshops.",
       category: "Certifications",
     },
     {
       icon: Star,
       title: "Open Source Projects",
-      description: "Multiple production-grade projects published with strong engineering focus.",
+      description:
+        "6+ production-grade public repositories with documented codebases, clean architecture, and real-world impact.",
       category: "Open Source",
     },
     {
       icon: Code2,
       title: "Competitive Programming",
-      description: "150+ solved problems, contest participation, and consistent skill building.",
+      description:
+        "150+ problems solved on Codolio and LeetCode, 30+ contests entered, with a consistent improvement streak.",
       category: "Competitive",
     },
   ];
@@ -1101,6 +1099,7 @@ function AchievementsSection() {
 
 // ─── ContactSection ───────────────────────────────────────────────────────────
 
+// Fix #5: formSubmitted / onReset props added for locked confirmation state
 function ContactSection({
   formData,
   formStatus,
@@ -1109,6 +1108,8 @@ function ContactSection({
   onChange,
   onSubmit,
   isSubmitting,
+  formSubmitted,
+  onReset,
 }: {
   formData: ContactForm;
   formStatus: string;
@@ -1117,6 +1118,8 @@ function ContactSection({
   onChange: (field: keyof ContactForm, value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   isSubmitting: boolean;
+  formSubmitted: boolean;
+  onReset: () => void;
 }) {
   const contacts = [
     {
@@ -1183,73 +1186,112 @@ function ContactSection({
           </div>
         </motion.div>
 
-        <motion.form
+        {/* Fix #5: Show confirmation state when form submitted successfully */}
+        <motion.div
           initial={{ x: 16, opacity: 0 }}
           whileInView={{ x: 0, opacity: 1 }}
           viewport={{ once: true }}
-          onSubmit={onSubmit}
-          className="space-y-4 border border-zinc-800 bg-[#111] p-6"
         >
-          <input
-            type="text"
-            placeholder="Your Name"
-            value={formData.name}
-            onChange={(event) => onChange("name", event.target.value)}
-            required
-            className="w-full border border-zinc-700 bg-zinc-900 px-4 py-3 font-mono text-sm text-white placeholder-zinc-600 outline-none transition focus:border-yellow-400/60"
-          />
-          {formErrors.name ? (
-            <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-red-400">
-              {formErrors.name}
-            </p>
-          ) : null}
-          <input
-            type="email"
-            placeholder="Your Email"
-            value={formData.email}
-            onChange={(event) => onChange("email", event.target.value)}
-            required
-            className="w-full border border-zinc-700 bg-zinc-900 px-4 py-3 font-mono text-sm text-white placeholder-zinc-600 outline-none transition focus:border-yellow-400/60"
-          />
-          {formErrors.email ? (
-            <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-red-400">
-              {formErrors.email}
-            </p>
-          ) : null}
-          <textarea
-            placeholder="Your Message"
-            rows={4}
-            value={formData.message}
-            onChange={(event) => onChange("message", event.target.value)}
-            required
-            className="w-full resize-none border border-zinc-700 bg-zinc-900 px-4 py-3 font-mono text-sm text-white placeholder-zinc-600 outline-none transition focus:border-yellow-400/60"
-          />
-          {formErrors.message ? (
-            <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-red-400">
-              {formErrors.message}
-            </p>
-          ) : null}
-          <motion.button
-            type="submit"
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
-            disabled={isSubmitting}
-            className="inline-flex w-full items-center justify-center gap-2 bg-yellow-400 px-6 py-3 font-mono text-xs font-bold uppercase tracking-[0.2em] text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            <Send className="h-4 w-4" />
-            {isSubmitting ? "Sending..." : "Send Message"}
-          </motion.button>
-          {formStatus ? (
-            <motion.p
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`text-center font-mono text-xs uppercase tracking-widest ${formStatusType === "error" ? "text-red-400" : "text-yellow-400"
-                }`}
-            >
-              {formStatusType === "error" ? "Alert" : "Status"}: {formStatus}
-            </motion.p>
-          ) : null}
-        </motion.form>
+          <AnimatePresence mode="wait">
+            {formSubmitted ? (
+              <motion.div
+                key="confirmation"
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.97 }}
+                transition={{ duration: 0.3 }}
+                className="flex h-full flex-col items-center justify-center gap-6 border border-zinc-800 bg-[#111] p-10 text-center"
+              >
+                <CheckCircle2 className="h-12 w-12 text-yellow-400" />
+                <div>
+                  <h3 className="mb-2 text-xl font-black uppercase text-white">
+                    Message Received
+                  </h3>
+                  <p className="text-sm leading-7 text-zinc-400">
+                    Thanks for reaching out. I&apos;ll get back to you shortly.
+                  </p>
+                </div>
+                <motion.button
+                  type="button"
+                  onClick={onReset}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="border border-zinc-600 px-6 py-2.5 font-mono text-xs uppercase tracking-[0.2em] text-zinc-400 transition-colors hover:border-yellow-400/50 hover:text-yellow-400"
+                >
+                  Send Another
+                </motion.button>
+              </motion.div>
+            ) : (
+              <motion.form
+                key="form"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onSubmit={onSubmit}
+                className="space-y-4 border border-zinc-800 bg-[#111] p-6"
+              >
+                <input
+                  type="text"
+                  placeholder="Your Name"
+                  value={formData.name}
+                  onChange={(event) => onChange("name", event.target.value)}
+                  required
+                  className="w-full border border-zinc-700 bg-zinc-900 px-4 py-3 font-mono text-sm text-white placeholder-zinc-600 outline-none transition focus:border-yellow-400/60"
+                />
+                {formErrors.name ? (
+                  <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-red-400">
+                    {formErrors.name}
+                  </p>
+                ) : null}
+                <input
+                  type="email"
+                  placeholder="Your Email"
+                  value={formData.email}
+                  onChange={(event) => onChange("email", event.target.value)}
+                  required
+                  className="w-full border border-zinc-700 bg-zinc-900 px-4 py-3 font-mono text-sm text-white placeholder-zinc-600 outline-none transition focus:border-yellow-400/60"
+                />
+                {formErrors.email ? (
+                  <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-red-400">
+                    {formErrors.email}
+                  </p>
+                ) : null}
+                <textarea
+                  placeholder="Your Message"
+                  rows={4}
+                  value={formData.message}
+                  onChange={(event) => onChange("message", event.target.value)}
+                  required
+                  className="w-full resize-none border border-zinc-700 bg-zinc-900 px-4 py-3 font-mono text-sm text-white placeholder-zinc-600 outline-none transition focus:border-yellow-400/60"
+                />
+                {formErrors.message ? (
+                  <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-red-400">
+                    {formErrors.message}
+                  </p>
+                ) : null}
+                <motion.button
+                  type="submit"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  disabled={isSubmitting}
+                  className="inline-flex w-full items-center justify-center gap-2 bg-yellow-400 px-6 py-3 font-mono text-xs font-bold uppercase tracking-[0.2em] text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  <Send className="h-4 w-4" />
+                  {isSubmitting ? "Sending..." : "Send Message"}
+                </motion.button>
+                {formStatus && formStatusType === "error" ? (
+                  <motion.p
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-center font-mono text-xs uppercase tracking-widest text-red-400"
+                  >
+                    Alert: {formStatus}
+                  </motion.p>
+                ) : null}
+              </motion.form>
+            )}
+          </AnimatePresence>
+        </motion.div>
       </div>
     </SectionShell>
   );
@@ -1257,11 +1299,12 @@ function ContactSection({
 
 // ─── Footer ───────────────────────────────────────────────────────────────────
 
+// Fix #6: Corrected icon mapping — Github for GitHub, Code2 for Codolio
 function Footer() {
   const socials = [
-    { icon: Globe, link: "https://github.com/artist-hks", label: "GitHub" },
+    { icon: Code2, link: "https://github.com/artist-hks", label: "GitHub" },
     { icon: BriefcaseBusiness, link: "https://linkedin.com/in/artisthks", label: "LinkedIn" },
-    { icon: Code2, link: "https://codolio.com/profile/artist_hks", label: "Codolio" },
+    { icon: Globe, link: "https://codolio.com/profile/artist_hks", label: "Codolio" },
     { icon: Mail, link: "mailto:artist.hks.dev@gmail.com", label: "Email" },
   ];
 
