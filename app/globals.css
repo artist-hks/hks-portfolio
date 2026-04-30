@@ -46,15 +46,15 @@ button {
 
 /* ── Scrollbar ─────────────────────────────────────────── */
 
-/* Firefox */
-* {
+/* Firefox — scoped to html to avoid affecting inner elements */
+html {
   scrollbar-width: thin;
-  scrollbar-color: #facc15 transparent;
+  scrollbar-color: rgba(217, 119, 6, 0.35) transparent;
 }
 
 /* Chrome / Edge / Safari */
 ::-webkit-scrollbar {
-  width: 5px;
+  width: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -63,12 +63,12 @@ button {
 
 ::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: #d97706;
+  background: rgba(217, 119, 6, 0.35);
   transition: background 200ms ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #facc15;
+  background: rgba(250, 204, 21, 0.75);
 }
 
 @media (pointer: coarse) {
