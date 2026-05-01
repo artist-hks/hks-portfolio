@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -12,7 +12,6 @@ import {
   type ContactForm,
 } from "@/lib/portfolio";
 import {
-  AtSign,
   Award,
   Brain,
   BriefcaseBusiness,
@@ -22,7 +21,7 @@ import {
   ExternalLink,
   FileText,
   Gamepad2,
-  Globe,
+  GitBranch,
   Mail,
   Menu,
   Palette,
@@ -149,9 +148,7 @@ export default function PortfolioPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white"
-      style={{ overflowX: "clip" }}
-    >
+    <div className="min-h-screen overflow-x-hidden bg-[#0a0a0a] text-white">
       <ParticleBackground />
 
       <AnimatePresence>{isLoading ? <LoadingScreen /> : null}</AnimatePresence>
@@ -259,8 +256,10 @@ function Navigation({
   function scrollToSection(id: string) {
     const element = document.getElementById(id);
     if (!element) return;
+
     const offset = 70;
-    const top = element.getBoundingClientRect().top + window.scrollY - offset;
+    const top = element.getBoundingClientRect().top + window.pageYOffset - offset;
+
     window.scrollTo({ top, behavior: "smooth" });
   }
 
@@ -269,11 +268,8 @@ function Navigation({
     sectionId: string
   ) {
     e.preventDefault();
-    // Close drawer FIRST, then wait for its exit animation (250ms)
-    // to finish before reading getBoundingClientRect — otherwise the
-    // drawer's height inflates the offset and lands on the wrong section.
-    onCloseMenu();
-    window.setTimeout(() => scrollToSection(sectionId), 280);
+    scrollToSection(sectionId); // scroll first
+    onCloseMenu();              // then close menu
   }
 
   return (
@@ -370,8 +366,7 @@ function HeroSection({ isLoading }: { isLoading: boolean }) {
   return (
     <section
       id="home"
-      className="relative flex min-h-screen items-center pt-24"
-      style={{ overflow: "clip" }}
+      className="relative flex min-h-screen items-center overflow-hidden pt-24"
     >
       {/* Grid overlay */}
       <div
@@ -1158,13 +1153,13 @@ function ContactSection({
       link: "https://linkedin.com/in/artisthks",
     },
     {
-      icon: Globe,
+      icon: GitBranch,
       label: "GitHub",
       value: "github.com/artist-hks",
       link: "https://github.com/artist-hks",
     },
     {
-      icon: AtSign,
+      icon: Code2,
       label: "Codolio",
       value: "codolio.com/profile/artist_hks",
       link: "https://codolio.com/profile/artist_hks",
@@ -1325,9 +1320,9 @@ function ContactSection({
 // Fix #6: Corrected icon mapping — Github for GitHub, Code2 for Codolio
 function Footer() {
   const socials = [
-    { icon: Code2, link: "https://github.com/artist-hks", label: "GitHub" },
+    { icon: GitBranch, link: "https://github.com/artist-hks", label: "GitHub" },
     { icon: BriefcaseBusiness, link: "https://linkedin.com/in/artisthks", label: "LinkedIn" },
-    { icon: Globe, link: "https://codolio.com/profile/artist_hks", label: "Codolio" },
+    { icon: Code2, link: "https://codolio.com/profile/artist_hks", label: "Codolio" },
     { icon: Mail, link: "mailto:artist.hks.dev@gmail.com", label: "Email" },
   ];
 
