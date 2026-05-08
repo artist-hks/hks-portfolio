@@ -5,12 +5,47 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  codolioStats,
+  codolioStats as codolioStatsFallback,
   createEmptyContactForm,
   sections,
   type CodolioStats,
   type ContactForm,
 } from "@/lib/portfolio";
+
+// ─── useCodolioStats ──────────────────────────────────────────────────────────
+// Fetches live stats from /api/codolio on every mount.
+// Falls back to static values from portfolio.ts if the fetch fails.
+function useCodolioStats() {
+  const [stats, setStats] = useState<CodolioStats>(codolioStatsFallback);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    fetch("/api/codolio", { cache: "no-store" })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<CodolioStats>;
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setStats(data);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  return { stats, loading, error };
+}
 import {
   Award,
   Brain,
@@ -43,6 +78,7 @@ export default function PortfolioPage() {
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof ContactForm, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const { stats: codolioStats, loading: codolioLoading, error: codolioError } = useCodolioStats();
 
   // Fix #1: Sync loading duration precisely so TypewriterText starts fresh
   useEffect(() => {
@@ -166,7 +202,7 @@ export default function PortfolioPage() {
       <SkillsSection />
       <ProjectsSection />
       <ExperienceSection />
-      <ResumeSection codolioStats={codolioStats} />
+      <ResumeSection codolioStats={codolioStats} codolioLoading={codolioLoading} codolioError={codolioError} />
       <AchievementsSection />
       <ContactSection
         formData={formData}
@@ -942,7 +978,15 @@ function ExperienceSection() {
 // ─── ResumeSection ────────────────────────────────────────────────────────────
 
 // Fix #4: Codolio stats now only appear here — removed from ExperienceSection
-function ResumeSection({ codolioStats }: { codolioStats: CodolioStats | null }) {
+function ResumeSection({
+  codolioStats,
+  codolioLoading,
+  codolioError,
+}: {
+  codolioStats: CodolioStats;
+  codolioLoading: boolean;
+  codolioError: boolean;
+}) {
   return (
     <SectionShell id="resume" title="Resume" accent="& Downloads">
       <div className="grid gap-6 md:grid-cols-2">
@@ -1013,28 +1057,61 @@ function ResumeSection({ codolioStats }: { codolioStats: CodolioStats | null }) 
             <h3 className="text-xl font-black uppercase text-white">Codolio Profile</h3>
           </div>
           <p className="mb-5 text-sm leading-7 text-zinc-400">
-            Competitive programming profile with coding activity, contests, and performance snapshots.
+            Competitive programming profile tracking problems, contests, and performance across
+            LeetCode, CodeStudio, GFG, CodeChef &amp; more.
           </p>
-          {codolioStats ? (
-            <div className="mb-6 grid grid-cols-2 gap-3">
-              {[
-                { label: "Problems", value: codolioStats.problemsSolved },
-                { label: "Rating", value: codolioStats.rating },
-                { label: "Contests", value: codolioStats.contests },
-                { label: "Streak", value: codolioStats.streak },
-              ].map((stat) => (
-                <div
-                  key={stat.label}
-                  className="border border-zinc-800 bg-zinc-900 p-4 text-center"
-                >
-                  <div className="text-2xl font-black text-yellow-400">{stat.value}</div>
-                  <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.15em] text-zinc-500">
-                    {stat.label}
-                  </div>
-                </div>
-              ))}
+
+          {/* Stats grid with loading skeleton */}
+          <div className="mb-6 grid grid-cols-3 gap-3">
+            {([
+              { label: "Questions", value: codolioStats.problemsSolved },
+              { label: "DSA", value: codolioStats.dsaProblems },
+              { label: "Contests", value: codolioStats.contests },
+              { label: "Streak", value: codolioStats.streak },
+              { label: "Active Days", value: codolioStats.activeDays },
+              { label: "Rating", value: codolioStats.rating },
+            ] as const).map((stat) => (
+              <div
+                key={stat.label}
+                className="border border-zinc-800 bg-zinc-900 p-3 text-center"
+              >
+                {codolioLoading ? (
+                  <>
+                    <div className="mx-auto mb-1 h-6 w-10 animate-pulse rounded bg-zinc-700" />
+                    <div className="mx-auto h-2 w-14 animate-pulse rounded bg-zinc-800" />
+                  </>
+                ) : (
+                  <>
+                    <div className="text-xl font-black text-yellow-400">{stat.value}</div>
+                    <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-500">
+                      {stat.label}
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* DSA difficulty breakdown */}
+          {!codolioLoading && (
+            <div className="mb-5 flex items-center gap-3 rounded-none border border-zinc-800 bg-zinc-900/60 px-4 py-2.5">
+              <span className="font-mono text-[9px] uppercase tracking-[0.15em] text-zinc-500">DSA</span>
+              <div className="flex flex-1 items-center gap-2">
+                <span className="font-mono text-[10px] text-green-400">E&nbsp;{codolioStats.easy}</span>
+                <div className="h-px flex-1 bg-zinc-700" />
+                <span className="font-mono text-[10px] text-yellow-400">M&nbsp;{codolioStats.medium}</span>
+                <div className="h-px flex-1 bg-zinc-700" />
+                <span className="font-mono text-[10px] text-red-400">H&nbsp;{codolioStats.hard}</span>
+              </div>
             </div>
-          ) : null}
+          )}
+
+          {/* Error / stale notice */}
+          {codolioError && (
+            <p className="mb-4 font-mono text-[9px] uppercase tracking-[0.1em] text-zinc-600">
+              ⚠ Showing cached stats — live fetch unavailable
+            </p>
+          )}
           <motion.a
             href="https://codolio.com/profile/artist_hks"
             target="_blank"
@@ -1082,7 +1159,7 @@ function AchievementsSection() {
       icon: Code2,
       title: "Competitive Programming",
       description:
-        "150+ problems solved on Codolio and LeetCode, 30+ contests entered, with a consistent improvement streak.",
+        "464 problems solved across LeetCode, GFG, CodeChef & CodeStudio. 5 contests entered, 49-day max streak, with consistent improvement across Easy, Medium & Hard.",
       category: "Competitive",
     },
   ];
