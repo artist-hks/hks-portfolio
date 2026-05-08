@@ -4,6 +4,7 @@ import type { FormEvent, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
+import LoadingScreen from "@/components/ui/LoadingScreen";
 import {
   codolioStats as codolioStatsFallback,
   createEmptyContactForm,
@@ -78,10 +79,12 @@ export default function PortfolioPage() {
   const [formSubmitted, setFormSubmitted] = useState(false);
   const { stats: codolioStats, loading: codolioLoading, error: codolioError } = useCodolioStats();
 
-  // Cinematic loading screen: runs for 2.8s, then a 550ms wipe exit plays
+  // Cinematic loading screen: phase controller lives inside LoadingScreen;
+  // it calls setIsLoading(false) when the exit phase begins.
+  // Keep a ~3.4s hard cap so portfolio is never permanently blocked.
   useEffect(() => {
-    const timer = window.setTimeout(() => setIsLoading(false), 2800);
-    return () => window.clearTimeout(timer);
+    const cap = window.setTimeout(() => setIsLoading(false), 3400);
+    return () => window.clearTimeout(cap);
   }, []);
 
   // Fix #2: Active nav section via IntersectionObserver
@@ -185,7 +188,9 @@ export default function PortfolioPage() {
     <div className="min-h-screen overflow-x-hidden bg-[#0a0a0a] text-white">
       <ParticleBackground />
 
-      <AnimatePresence>{isLoading ? <LoadingScreen /> : null}</AnimatePresence>
+      <AnimatePresence>
+        {isLoading ? <LoadingScreen onDone={() => setIsLoading(false)} /> : null}
+      </AnimatePresence>
 
       <Navigation
         mobileMenuOpen={mobileMenuOpen}
@@ -225,314 +230,6 @@ function ParticleBackground() {
     <div className="pointer-events-none fixed inset-0 overflow-hidden">
       <div className="absolute inset-0 bg-[linear-gradient(rgba(250,204,21,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(250,204,21,0.03)_1px,transparent_1px)] bg-[size:48px_48px]" />
     </div>
-  );
-}
-
-// ─── LoadingScreen ────────────────────────────────────────────────────────────
-
-function LoadingScreen() {
-  const [progress, setProgress] = useState(0);
-  const [bootLines, setBootLines] = useState<string[]>([]);
-  const [glitchReady, setGlitchReady] = useState(false);
-
-  const BOOT_SEQUENCE = [
-    "SYS INIT... OK",
-    "LOADING ASSETS...",
-    "CALIBRATING HUD...",
-    "OPERATOR VERIFIED",
-    "LAUNCHING STUDIO",
-  ];
-
-  useEffect(() => {
-    // Simulate staggered boot log lines
-    BOOT_SEQUENCE.forEach((line, i) => {
-      window.setTimeout(
-        () => setBootLines((prev) => [...prev, line]),
-        320 + i * 220
-      );
-    });
-    // Progress counter via fast interval
-    let p = 0;
-    const tick = window.setInterval(() => {
-      p += Math.floor(Math.random() * 4) + 1;
-      if (p >= 100) { p = 100; window.clearInterval(tick); }
-      setProgress(p);
-    }, 18);
-    // Enable glitch after 900ms
-    window.setTimeout(() => setGlitchReady(true), 900);
-    return () => window.clearInterval(tick);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <motion.div
-      className="fixed inset-0 z-[60] flex items-center justify-center overflow-hidden bg-[#000]"
-      style={{ pointerEvents: "auto" }}
-      exit={{ clipPath: "polygon(100% 0, 100% 0, 100% 100%, 100% 100%)" }}
-      transition={{ duration: 0.55, ease: [0.76, 0, 0.24, 1] }}
-    >
-      {/* ── Scanline sweep ── */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[3px] z-30"
-        style={{
-          background: "linear-gradient(90deg, transparent, rgba(250,204,21,0.18), transparent)",
-          animation: "hks-scanline 2s linear infinite",
-        }}
-      />
-
-      {/* ── Static noise texture ── */}
-      <div
-        className="pointer-events-none absolute inset-0 z-20 opacity-[0.03]"
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
-          backgroundSize: "160px 160px",
-        }}
-      />
-
-      {/* ── Grid overlay ── */}
-      <div
-        className="pointer-events-none absolute inset-0 z-10 opacity-[0.04]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(250,204,21,1) 1px, transparent 1px), linear-gradient(90deg, rgba(250,204,21,1) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-        }}
-      />
-
-      {/* ── HUD corner brackets ── */}
-      {(["tl", "tr", "bl", "br"] as const).map((pos, i) => (
-        <motion.div
-          key={pos}
-          className="pointer-events-none absolute z-20"
-          style={{
-            top: pos.startsWith("t") ? 28 : undefined,
-            bottom: pos.startsWith("b") ? 28 : undefined,
-            left: pos.endsWith("l") ? 28 : undefined,
-            right: pos.endsWith("r") ? 28 : undefined,
-            width: 36, height: 36,
-            borderTop: pos.startsWith("t") ? "2px solid rgba(250,204,21,0.7)" : undefined,
-            borderBottom: pos.startsWith("b") ? "2px solid rgba(250,204,21,0.7)" : undefined,
-            borderLeft: pos.endsWith("l") ? "2px solid rgba(250,204,21,0.7)" : undefined,
-            borderRight: pos.endsWith("r") ? "2px solid rgba(250,204,21,0.7)" : undefined,
-            animation: `hks-hud-ping 1.6s ease-in-out ${i * 0.18}s infinite`,
-          }}
-          initial={{ opacity: 0, scale: 1.3 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4, delay: 0.1 + i * 0.06 }}
-        />
-      ))}
-
-      {/* ── Horizontal HUD lines ── */}
-      <motion.div
-        className="pointer-events-none absolute inset-x-0 top-14 z-20 h-px"
-        style={{ background: "linear-gradient(90deg, transparent, rgba(250,204,21,0.25) 30%, rgba(250,204,21,0.25) 70%, transparent)" }}
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-      />
-      <motion.div
-        className="pointer-events-none absolute inset-x-0 bottom-14 z-20 h-px"
-        style={{ background: "linear-gradient(90deg, transparent, rgba(250,204,21,0.25) 30%, rgba(250,204,21,0.25) 70%, transparent)" }}
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{ duration: 0.6, delay: 0.28, ease: "easeOut" }}
-      />
-
-      {/* ── Top-left operator tag ── */}
-      <motion.div
-        className="pointer-events-none absolute left-10 top-20 z-20 font-mono text-[10px] uppercase tracking-[0.3em] text-yellow-400/60"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-      >
-        OPR // HKS-001
-      </motion.div>
-
-      {/* ── Top-right timestamp ── */}
-      <motion.div
-        className="pointer-events-none absolute right-10 top-20 z-20 font-mono text-[10px] uppercase tracking-[0.25em] text-yellow-400/40"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.45 }}
-      >
-        SYS.BOOT / 2.1.0
-      </motion.div>
-
-      {/* ── Central content ── */}
-      <div className="relative z-30 flex flex-col items-center gap-8 px-6 text-center">
-
-        {/* Logo / Title block */}
-        <div className="relative select-none">
-          {/* Chromatic ghost — red */}
-          <div
-            className="pointer-events-none absolute inset-0 font-mono text-4xl font-black uppercase tracking-[0.55em] text-red-400 sm:text-5xl"
-            style={{
-              animation: glitchReady ? "hks-glitch-r 3.2s step-end infinite 0.2s" : "none",
-              opacity: 0,
-            }}
-            aria-hidden
-          >
-            HKS STUDIO
-          </div>
-          {/* Chromatic ghost — blue */}
-          <div
-            className="pointer-events-none absolute inset-0 font-mono text-4xl font-black uppercase tracking-[0.55em] text-blue-400 sm:text-5xl"
-            style={{
-              animation: glitchReady ? "hks-glitch-b 3.2s step-end infinite 0.2s" : "none",
-              opacity: 0,
-            }}
-            aria-hidden
-          >
-            HKS STUDIO
-          </div>
-          {/* Primary glitching title */}
-          <motion.h1
-            className="relative font-mono text-4xl font-black uppercase tracking-[0.55em] text-white sm:text-5xl"
-            style={{
-              textShadow: "0 0 30px rgba(250,204,21,0.15)",
-              animation: glitchReady ? "hks-glitch-x 3.2s step-end infinite" : "none",
-            }}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.35 }}
-          >
-            HKS STUDIO
-          </motion.h1>
-          {/* Yellow accent underline */}
-          <motion.div
-            className="mx-auto mt-3 h-[2px] origin-left bg-yellow-400"
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            transition={{ duration: 0.5, delay: 0.65, ease: "easeOut" }}
-          />
-        </div>
-
-        {/* Subtitle */}
-        <motion.p
-          className="font-mono text-[11px] uppercase tracking-[0.4em] text-zinc-500"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.55 }}
-        >
-          Advanced System — Initializing Operator Environment
-        </motion.p>
-
-        {/* Boot log */}
-        <div className="w-72 text-left sm:w-96">
-          {bootLines.map((line, i) => (
-            <motion.div
-              key={line}
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.2 }}
-              className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em]"
-              style={{
-                color: i === bootLines.length - 1 ? "#facc15" : "rgba(113,113,122,0.8)",
-                animation: i === bootLines.length - 1 ? "hks-flicker 0.6s ease-out" : "none",
-              }}
-            >
-              <span style={{ color: "#facc15", opacity: 0.6 }}>{">>"}</span>
-              {line}
-              {i === bootLines.length - 1 && (
-                <span
-                  className="ml-1 inline-block h-3 w-1.5 bg-yellow-400"
-                  style={{ animation: "hks-blink 0.9s step-end infinite" }}
-                />
-              )}
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Progress bar + percentage */}
-        <div className="w-72 sm:w-96">
-          <div className="mb-2 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.25em]">
-            <span className="text-zinc-600">LOADING</span>
-            <motion.span
-              className="tabular-nums text-yellow-400"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-            >
-              {progress}%
-            </motion.span>
-          </div>
-
-          {/* Track */}
-          <div className="relative h-[3px] w-full overflow-hidden bg-zinc-800">
-            {/* Filled */}
-            <div
-              className="absolute left-0 top-0 h-full bg-yellow-400 transition-none"
-              style={{
-                width: `${progress}%`,
-                boxShadow: "0 0 8px rgba(250,204,21,0.6), 0 0 16px rgba(250,204,21,0.2)",
-              }}
-            />
-            {/* Leading edge glow */}
-            <div
-              className="absolute top-0 h-full w-6 -translate-x-1/2"
-              style={{
-                left: `${progress}%`,
-                background: "linear-gradient(90deg, transparent, rgba(250,204,21,0.8), transparent)",
-              }}
-            />
-          </div>
-
-          {/* Tick marks */}
-          <div className="mt-1 flex justify-between">
-            {[0, 25, 50, 75, 100].map((tick) => (
-              <div
-                key={tick}
-                className="h-1 w-px"
-                style={{ background: progress >= tick ? "rgba(250,204,21,0.6)" : "rgba(113,113,122,0.4)" }}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Bottom classified tag */}
-        <motion.div
-          className="font-mono text-[9px] uppercase tracking-[0.4em] text-zinc-700"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-        >
-          ◈ Classified — Authorized Access Only ◈
-        </motion.div>
-      </div>
-
-      {/* ── Bottom-right build info ── */}
-      <motion.div
-        className="pointer-events-none absolute bottom-20 right-10 z-20 text-right font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-700"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.6 }}
-      >
-        <div>BUILD 2026.05</div>
-        <div>STUDIO ENGINE v3</div>
-      </motion.div>
-
-      {/* ── Bottom-left signal bars ── */}
-      <motion.div
-        className="pointer-events-none absolute bottom-20 left-10 z-20 flex items-end gap-[3px]"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-      >
-        {[3, 5, 7, 10, 13].map((h, i) => (
-          <div
-            key={h}
-            style={{
-              width: 3,
-              height: h,
-              background: progress > i * 20 ? "#facc15" : "rgba(113,113,122,0.4)",
-              transition: "background 0.3s",
-            }}
-          />
-        ))}
-        <span className="ml-2 font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-600">SIG</span>
-      </motion.div>
-    </motion.div>
   );
 }
 
