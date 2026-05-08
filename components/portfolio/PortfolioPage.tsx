@@ -1059,10 +1059,10 @@ function AchievementsSection() {
   const achievements = [
     {
       icon: Trophy,
-      title: "National Level Medals",
+      title: "Milestones",
       description:
-        "Gold and silver medals in national-level taekwondo and creative arts competitions across multiple years.",
-      category: "Sports & Creative",
+        "Recognized for excellence in creative arts and competitive gaming across multiple competitions and events.",
+      category: "Esports & Creative",
     },
     {
       icon: Award,
