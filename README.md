@@ -69,7 +69,8 @@ The design language is cinematic and tactical — dark background, sharp yellow 
 | 🏆 **Achievements Section** | Highlights of competitive and professional milestones |
 | ⌨️ **Codolio Integration** | Live competitive programming stats pulled via API |
 | 🔲 **Grid Face Masking** | Grid overlay intelligently masked away from the portrait using CSS radial masks |
-| 🌑 **Loading Screen** | Animated boot sequence with progress bar on first load |
+| 🌑 **Cinematic Loading Screen** | 7-phase tactical HUD boot sequence with radar, particles, glitch title & scan-flash |
+| 🖱️ **Custom Cursor** | Hardware-accelerated `translate3d` cursor with hover scale & 60fps RAF loop |
 
 ---
 
@@ -86,8 +87,8 @@ The design language is cinematic and tactical — dark background, sharp yellow 
 - **Custom CSS** — Radial mask overlays, gradient blending, filter compositions
 
 ### Backend / API
-- **Next.js API Routes** — Contact form endpoint
-- **[Nodemailer](https://nodemailer.com/)** — Email delivery from contact form
+- **Next.js API Routes** — Contact form & Codolio stats endpoints
+- **[Resend](https://resend.com/)** — Transactional email delivery from contact form
 
 ### Deployment
 - **[Vercel](https://vercel.com/)** — Zero-config deployment with edge network
@@ -100,16 +101,24 @@ The design language is cinematic and tactical — dark background, sharp yellow 
 hks-portfolio/
 ├── app/                        # Next.js App Router
 │   ├── api/
-│   │   └── contact/            # Contact form API route
+│   │   ├── contact/            # Contact form API route (Resend)
+│   │   │   └── route.ts
+│   │   └── codolio/            # Codolio stats proxy API route
 │   │       └── route.ts
+│   ├── globals.css             # Global styles & keyframe animations
 │   ├── layout.tsx              # Root layout with fonts and metadata
 │   └── page.tsx                # Entry point — renders PortfolioPage
 │
 ├── components/
-│   └── PortfolioPage.tsx       # Full portfolio page with all sections
+│   ├── portfolio/
+│   │   └── PortfolioPage.tsx   # Full portfolio page with all sections
+│   └── ui/
+│       ├── CustomCursor.tsx    # Hardware-accelerated custom cursor
+│       └── LoadingScreen.tsx   # Cinematic 7-phase tactical boot sequence
 │
 ├── lib/
-│   └── portfolio.ts            # Data, types, and constants
+│   ├── portfolio.ts            # Data, types, and constants
+│   └── resend.ts               # Resend email helper
 │
 ├── public/
 │   ├── profile.png             # Hero portrait image
@@ -118,7 +127,6 @@ hks-portfolio/
 │
 ├── .env.local                  # Environment variables (not committed)
 ├── next.config.ts
-├── tailwind.config.ts
 ├── tsconfig.json
 └── package.json
 ```
@@ -151,12 +159,10 @@ pnpm install
 Create a `.env.local` file in the root:
 
 ```env
-# Contact form email (Nodemailer)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your_email@gmail.com
-SMTP_PASS=your_app_password
-CONTACT_RECEIVER=your_email@gmail.com
+# Contact form email (Resend)
+RESEND_API_KEY=re_your_api_key_here
+RESEND_FROM_EMAIL=onboarding@resend.dev
+CONTACT_TO_EMAIL=your_email@gmail.com
 ```
 
 ### 4. Run the development server
