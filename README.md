@@ -50,7 +50,7 @@ The portfolio represents the intersection of three disciplines I care deeply abo
 - **UI/UX Design** — crafting interfaces that feel intentional and premium
 - **Machine Learning** — applying intelligent systems to real-world problems
 
-The design language is cinematic and tactical — dark background, sharp yellow accents, mono typography, and motion that serves purpose rather than distraction.
+The design language is cinematic and tactical. Recently refined to emphasize a premium, minimalist, and typography-focused layout, it prioritizes readable hierarchy and balanced composition while retaining immersive functional interactions like the cinematic loading sequence and hardware-accelerated custom cursor.
 
 ---
 
@@ -70,7 +70,8 @@ The design language is cinematic and tactical — dark background, sharp yellow 
 | ⌨️ **Codolio Integration** | Live competitive programming stats pulled via API |
 | 🔲 **Grid Face Masking** | Grid overlay intelligently masked away from the portrait using CSS radial masks |
 | 🌑 **Cinematic Loading Screen** | 7-phase tactical HUD boot sequence with radar, particles, glitch title & scan-flash |
-| 🖱️ **Custom Cursor** | Hardware-accelerated `translate3d` cursor with hover scale & 60fps RAF loop |
+| 🖱️ **Custom Cursor** | Highly optimized hardware-accelerated `translate3d` cursor with 60fps RAF tracking |
+| ✨ **Performance Focused** | Zero-lag hover state detection with dirty-flag caching to avoid redundant DOM paints |
 
 ---
 
